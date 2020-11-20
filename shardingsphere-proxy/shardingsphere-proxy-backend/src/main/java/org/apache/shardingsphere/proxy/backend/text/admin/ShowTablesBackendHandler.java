@@ -18,20 +18,25 @@
 package org.apache.shardingsphere.proxy.backend.text.admin;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.shardingsphere.infra.executor.sql.query.QueryResult;
+import org.apache.shardingsphere.infra.executor.sql.query.raw.QueryResultRow;
+import org.apache.shardingsphere.infra.executor.sql.query.raw.RawQueryResult;
+import org.apache.shardingsphere.infra.executor.sql.query.raw.metadata.QueryResultMetaData;
+import org.apache.shardingsphere.infra.executor.sql.query.raw.metadata.QueryResultRowMetaData;
 import org.apache.shardingsphere.infra.executor.sql.raw.execute.result.query.QueryHeader;
-import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
-import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngineFactory;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.BackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.response.BackendResponse;
-import org.apache.shardingsphere.proxy.backend.response.query.QueryData;
 import org.apache.shardingsphere.proxy.backend.response.query.QueryResponse;
 import org.apache.shardingsphere.proxy.backend.text.TextProtocolBackendHandler;
-import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
 
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Backend handler for show tables.
@@ -39,24 +44,24 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public final class ShowTablesBackendHandler implements TextProtocolBackendHandler {
     
-    private final DatabaseCommunicationEngineFactory databaseCommunicationEngineFactory = DatabaseCommunicationEngineFactory.getInstance();
-    
-    private final String sql;
-    
-    private final SQLStatement sqlStatement;
-    
     private final BackendConnection backendConnection;
     
-    private DatabaseCommunicationEngine databaseCommunicationEngine;
+    private QueryResponse queryResponse;
     
     @Override
-    public BackendResponse execute() throws SQLException {
+    public BackendResponse execute() {
         QueryResponse result = createQueryResponse(backendConnection.getSchemaName());
         if (!ProxyContext.getInstance().getMetaData(backendConnection.getSchemaName()).isComplete()) {
             return result;
         }
-        databaseCommunicationEngine = databaseCommunicationEngineFactory.newTextProtocolInstance(sqlStatement, sql, backendConnection);
-        return databaseCommunicationEngine.execute();
+        QueryResultMetaData metaData = new QueryResultMetaData(
+                Collections.singletonList(new QueryResultRowMetaData(result.getQueryHeaders().get(0).getColumnName(), result.getQueryHeaders().get(0).getColumnLabel(), "VARCHAR")));
+        Collection<String> allTableNames = ProxyContext.getInstance().getMetaData(backendConnection.getSchemaName()).getSchema().getAllTableNames();
+        List<QueryResultRow> rows = allTableNames.stream().map(each -> new QueryResultRow(Collections.singletonList(each))).collect(Collectors.toList());
+        QueryResult queryResult = new RawQueryResult(metaData, rows);
+        result.getQueryResults().add(queryResult);
+        queryResponse = result;
+        return result;
     }
     
     private QueryResponse createQueryResponse(final String schemaName) {
@@ -66,11 +71,15 @@ public final class ShowTablesBackendHandler implements TextProtocolBackendHandle
     
     @Override
     public boolean next() throws SQLException {
-        return null != databaseCommunicationEngine && databaseCommunicationEngine.next();
+        return null != queryResponse && queryResponse.getQueryResults().get(0).next();
     }
     
     @Override
-    public QueryData getQueryData() throws SQLException {
-        return databaseCommunicationEngine.getQueryData();
+    public List<Object> getRowData() throws SQLException {
+        List<Object> result = new ArrayList<>(queryResponse.getQueryHeaders().size());
+        for (int columnIndex = 1; columnIndex <= queryResponse.getQueryHeaders().size(); columnIndex++) {
+            result.add(queryResponse.getQueryResults().get(0).getValue(columnIndex, Object.class));
+        }
+        return result;
     }
 }

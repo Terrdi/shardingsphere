@@ -22,7 +22,6 @@ import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.Bac
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.exception.UnknownDatabaseException;
 import org.apache.shardingsphere.proxy.backend.response.BackendResponse;
-import org.apache.shardingsphere.proxy.backend.response.query.QueryData;
 import org.apache.shardingsphere.proxy.backend.response.update.UpdateResponse;
 import org.apache.shardingsphere.proxy.backend.text.TextProtocolBackendHandler;
 import org.apache.shardingsphere.sql.parser.sql.common.util.SQLUtil;
@@ -62,7 +61,7 @@ public final class UseDatabaseBackendHandler implements TextProtocolBackendHandl
     }
     
     @Override
-    public QueryData getQueryData() {
+    public Collection<Object> getRowData() {
         return null;
     }
 }

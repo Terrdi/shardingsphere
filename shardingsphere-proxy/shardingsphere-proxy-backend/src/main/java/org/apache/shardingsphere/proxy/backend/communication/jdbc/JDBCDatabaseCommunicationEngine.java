@@ -22,7 +22,7 @@ import org.apache.shardingsphere.infra.binder.LogicSQL;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.config.properties.ConfigurationPropertyKey;
 import org.apache.shardingsphere.infra.context.kernel.KernelProcessor;
-import org.apache.shardingsphere.infra.executor.sql.QueryResult;
+import org.apache.shardingsphere.infra.executor.sql.query.QueryResult;
 import org.apache.shardingsphere.infra.executor.sql.context.ExecutionContext;
 import org.apache.shardingsphere.infra.executor.sql.log.SQLLogger;
 import org.apache.shardingsphere.infra.executor.sql.raw.execute.result.query.QueryHeader;
@@ -153,14 +153,6 @@ public final class JDBCDatabaseCommunicationEngine implements DatabaseCommunicat
         for (int columnIndex = 1; columnIndex <= queryHeaders.size(); columnIndex++) {
             row.add(mergedResult.getValue(columnIndex, Object.class));
         }
-        return new QueryData(getColumnTypes(queryHeaders), row);
-    }
-    
-    private List<Integer> getColumnTypes(final List<QueryHeader> queryHeaders) {
-        List<Integer> result = new ArrayList<>(queryHeaders.size());
-        for (QueryHeader each : queryHeaders) {
-            result.add(each.getColumnType());
-        }
-        return result;
+        return new QueryData(queryHeaders.stream().map(QueryHeader::getColumnType).collect(Collectors.toList()), row);
     }
 }
