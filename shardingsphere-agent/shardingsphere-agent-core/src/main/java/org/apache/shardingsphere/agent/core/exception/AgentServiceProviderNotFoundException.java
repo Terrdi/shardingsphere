@@ -13,24 +13,22 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
-package org.apache.shardingsphere.agent.metrics.bootstrap;
-
-import net.bytebuddy.matcher.ElementMatchers;
-import org.apache.shardingsphere.agent.core.plugin.PluginDefinition;
+package org.apache.shardingsphere.agent.core.exception;
 
 /**
- * Metrics plugin definition.
+ * Agent service provider not found exception.
  */
-public class MetricsPluginDefinition extends PluginDefinition {
-
-    @Override
-    protected void define() {
-        intercept("org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask")
-                .aroundInstanceMethod(ElementMatchers.named("run"))
-                .implement("org.apache.shardingsphere.agent.plugin.trace.SampleAdvice")
-                .build();
+public final class AgentServiceProviderNotFoundException extends RuntimeException {
+    
+    private static final long serialVersionUID = -3730257541332863235L;
+    
+    public AgentServiceProviderNotFoundException(final Class<?> clazz) {
+        super(String.format("No implementation class load from SPI `%s`.", clazz.getName()));
+    }
+    
+    public AgentServiceProviderNotFoundException(final Class<?> clazz, final String type) {
+        super(String.format("No implementation class load from SPI `%s` with type `%s`.", clazz.getName(), type));
     }
 }

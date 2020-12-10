@@ -27,20 +27,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.agent.core.exception.ShardingSphereAgentException;
 
 /**
- * Agent path locator.
+ * Agent path builder.
  */
 @Slf4j
-public final class AgentPathLocator {
+public final class AgentPathBuilder {
     
     @Getter
     private static File agentPath;
     
+    @Getter
+    private static File pluginPath;
+    
     static {
-        agentPath = locatorPath();
+        agentPath = buildAgentPath();
+        pluginPath = buildAgentPluginPath();
     }
     
-    private static File locatorPath() {
-        String classResourcePath = AgentPathLocator.class.getName().replaceAll("\\.", "/") + ".class";
+    private static File buildAgentPath() {
+        String classResourcePath = AgentPathBuilder.class.getName().replaceAll("\\.", "/") + ".class";
         URL resource = ClassLoader.getSystemClassLoader().getResource(classResourcePath);
         if (resource != null) {
             String url = resource.toString();
@@ -67,9 +71,13 @@ public final class AgentPathLocator {
         try {
             File agentJarFile = new File(new URL(realUrl).toURI());
             return agentJarFile.exists() ? agentJarFile.getParentFile() : null;
-        } catch (MalformedURLException | URISyntaxException e) {
-            log.error("Can not locate agent jar file by url:" + url);
+        } catch (final MalformedURLException | URISyntaxException ex) {
+            log.error(String.format("Can not locate agent jar file by url %s", url), ex);
             return null;
         }
+    }
+    
+    private static File buildAgentPluginPath() {
+        return new File(agentPath.getPath() + "/plugins");
     }
 }

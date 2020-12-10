@@ -21,64 +21,73 @@ package org.apache.shardingsphere.agent.core.plugin;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
-import net.bytebuddy.matcher.ElementMatchers;
+import org.apache.shardingsphere.agent.core.common.AgentPathBuilder;
+import org.apache.shardingsphere.agent.core.config.AgentConfiguration;
+import org.apache.shardingsphere.agent.core.utils.SingletonHolder;
 
-import org.apache.shardingsphere.agent.core.common.AgentPathLocator;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.jar.Attributes;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
 /**
- * Plugins loader.
+ * Agent plugin loader.
  */
 @Slf4j
-public final class PluginLoader extends ClassLoader implements Closeable {
+public final class AgentPluginLoader extends ClassLoader implements Closeable {
     
-    private static final PluginLoader INSTANCE = new PluginLoader();
+    static {
+        registerAsParallelCapable();
+    }
+    
+    private static volatile AgentPluginLoader agentPluginLoader;
     
     private final ConcurrentHashMap<String, Object> objectPool = new ConcurrentHashMap<>();
     
     private final ReentrantLock lock = new ReentrantLock();
     
-    private final List<JarFile> jars = Lists.newArrayList();
+    private final List<UberJar> jars = Lists.newArrayList();
     
     private final List<Service> services = Lists.newArrayList();
     
     private Map<String, PluginAdviceDefinition> pluginDefineMap;
     
-    private PluginLoader() {
-        try {
-            pluginDefineMap = loadAllPlugins();
-        } catch (IOException ioe) {
-            log.error("Failed to load plugins.");
-        }
+    private AgentPluginLoader() {
     }
     
     @Override
     protected Class<?> findClass(final String name) throws ClassNotFoundException {
         String path = classNameToPath(name);
-        for (JarFile jar : jars) {
-            ZipEntry entry = jar.getEntry(path);
+        for (UberJar jar : jars) {
+            ZipEntry entry = jar.jarFile.getEntry(path);
             if (Objects.nonNull(entry)) {
                 try {
-                    byte[] data = ByteStreams.toByteArray(jar.getInputStream(entry));
+                    byte[] data = ByteStreams.toByteArray(jar.jarFile.getInputStream(entry));
                     return defineClass(name, data, 0, data.length);
-                } catch (IOException ioe) {
-                    log.error("Failed to load class {}.", name, ioe);
+                } catch (final IOException ex) {
+                    log.error("Failed to load class {}.", name, ex);
                 }
             }
         }
@@ -86,36 +95,83 @@ public final class PluginLoader extends ClassLoader implements Closeable {
     }
     
     @Override
+    protected Enumeration<URL> findResources(final String name) {
+        List<URL> resources = Lists.newArrayList();
+        for (UberJar jar : jars) {
+            JarEntry entry = jar.jarFile.getJarEntry(name);
+            if (Objects.nonNull(entry)) {
+                try {
+                    resources.add(new URL("jar:file:" + jar.sourcePath.getAbsolutePath() + "!/" + name));
+                } catch (final MalformedURLException ignored) {
+                }
+            }
+        }
+        return Collections.enumeration(resources);
+    }
+    
+    @Override
+    protected URL findResource(final String name) {
+        for (UberJar jar : jars) {
+            JarEntry entry = jar.jarFile.getJarEntry(name);
+            if (Objects.nonNull(entry)) {
+                try {
+                    return new URL("jar:file:" + jar.sourcePath.getAbsolutePath() + "!/" + name);
+                } catch (final MalformedURLException ignored) {
+                }
+            }
+        }
+        return null;
+    }
+    
+    @Override
     public void close() {
-        for (JarFile jar : jars) {
+        for (UberJar jar : jars) {
             try {
-                jar.close();
-            } catch (IOException ioe) {
-                log.error("", ioe);
+                jar.jarFile.close();
+            } catch (final IOException ex) {
+                log.error("close is ", ex);
             }
         }
     }
     
     /**
-     * To get plugin loader instance.
+     * To get agent plugin loader instance.
      *
      * @return plugin loader
      */
-    public static PluginLoader getInstance() {
-        return INSTANCE;
+    public static AgentPluginLoader getInstance() {
+        if (null == agentPluginLoader) {
+            synchronized (AgentPluginLoader.class) {
+                if (null == agentPluginLoader) {
+                    agentPluginLoader = new AgentPluginLoader();
+                }
+            }
+        }
+        return agentPluginLoader;
     }
     
-    private Map<String, PluginAdviceDefinition> loadAllPlugins() throws IOException {
-        File[] jarFiles = AgentPathLocator.getAgentPath().listFiles(file -> file.getName().endsWith(".jar"));
-        ImmutableMap.Builder<String, PluginAdviceDefinition> pluginDefineMap = ImmutableMap.builder();
-        if (jarFiles == null) {
-            return pluginDefineMap.build();
+    /**
+     * Load all plugins.
+     *
+     * @throws IOException the IO exception
+     */
+    public void loadAllPlugins() throws IOException {
+        File[] jarFiles = AgentPathBuilder.getPluginPath().listFiles(file -> file.getName().endsWith(".jar"));
+        if (null == jarFiles) {
+            return;
         }
+        Map<String, PluginAdviceDefinition> pluginAdviceDefinitionMap = Maps.newHashMap();
+        AgentConfiguration configuration = SingletonHolder.INSTANCE.get(AgentConfiguration.class);
+        List<String> activatedLists = configuration.getActivatedPlugins();
+        if (null == activatedLists) {
+            activatedLists = Lists.newArrayList();
+        }
+        Set<String> activatedPlugins = Sets.newHashSet(activatedLists);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         for (File jarFile : jarFiles) {
             outputStream.reset();
             JarFile jar = new JarFile(jarFile, true);
-            jars.add(jar);
+            jars.add(new UberJar(jar, jarFile));
             Attributes attributes = jar.getManifest().getMainAttributes();
             String entrypoint = attributes.getValue("Entrypoint");
             if (Strings.isNullOrEmpty(entrypoint)) {
@@ -125,19 +181,32 @@ public final class PluginLoader extends ClassLoader implements Closeable {
             ByteStreams.copy(jar.getInputStream(jar.getEntry(classNameToPath(entrypoint))), outputStream);
             try {
                 PluginDefinition pluginDefinition = (PluginDefinition) defineClass(entrypoint, outputStream.toByteArray(), 0, outputStream.size()).newInstance();
+                if (!activatedPlugins.isEmpty() && !activatedPlugins.contains(pluginDefinition.getPluginName())) {
+                    continue;
+                }
                 pluginDefinition.getAllServices().forEach(klass -> {
                     try {
                         services.add(klass.newInstance());
-                    } catch (InstantiationException | IllegalAccessException e) {
-                        log.error("Failed to create service instance, {}.", klass.getTypeName(), e);
+                    } catch (InstantiationException | IllegalAccessException ex) {
+                        log.error("Failed to create service instance, {}.", klass.getTypeName(), ex);
                     }
                 });
-                pluginDefinition.build().forEach(plugin -> pluginDefineMap.put(plugin.getClassNameOfTarget(), plugin));
-            } catch (InstantiationException | IllegalAccessException e) {
-                log.error("Failed to load plugin definition, {}.", entrypoint, e);
+                pluginDefinition.build().forEach(plugin -> {
+                    String target = plugin.getClassNameOfTarget();
+                    if (pluginAdviceDefinitionMap.containsKey(target)) {
+                        PluginAdviceDefinition definition = pluginAdviceDefinitionMap.get(target);
+                        definition.getConstructorPoints().addAll(plugin.getConstructorPoints());
+                        definition.getInstanceMethodPoints().addAll(plugin.getInstanceMethodPoints());
+                        definition.getClassStaticMethodPoints().addAll(plugin.getClassStaticMethodPoints());
+                    } else {
+                        pluginAdviceDefinitionMap.put(target, plugin);
+                    }
+                });
+            } catch (final InstantiationException | IllegalAccessException ex) {
+                log.error("Failed to load plugin definition, {}.", entrypoint, ex);
             }
         }
-        return pluginDefineMap.build();
+        pluginDefineMap = ImmutableMap.<String, PluginAdviceDefinition>builder().putAll(pluginAdviceDefinitionMap).build();
     }
     
     private String classNameToPath(final String className) {
@@ -150,7 +219,23 @@ public final class PluginLoader extends ClassLoader implements Closeable {
      * @return type matcher
      */
     public ElementMatcher<? super TypeDescription> typeMatcher() {
-        return ElementMatchers.anyOf(pluginDefineMap.keySet().stream().map(ElementMatchers::named).toArray());
+        return new ElementMatcher.Junction<TypeDescription>() {
+            
+            @Override
+            public boolean matches(final TypeDescription target) {
+                return pluginDefineMap.containsKey(target.getTypeName());
+            }
+            
+            @Override
+            public <U extends TypeDescription> Junction<U> and(final ElementMatcher<? super U> other) {
+                return null;
+            }
+            
+            @Override
+            public <U extends TypeDescription> Junction<U> or(final ElementMatcher<? super U> other) {
+                return null;
+            }
+        };
     }
     
     /**
@@ -207,9 +292,9 @@ public final class PluginLoader extends ClassLoader implements Closeable {
             try {
                 service.setup();
                 // CHECKSTYLE:OFF
-            } catch (Exception e) {
+            } catch (final Exception ex) {
                 // CHECKSTYLE:ON
-                log.error("Failed to initial service.");
+                log.error("Failed to initial service.", ex);
             }
         });
     }
@@ -222,9 +307,9 @@ public final class PluginLoader extends ClassLoader implements Closeable {
             try {
                 service.start();
                 // CHECKSTYLE:OFF
-            } catch (Exception e) {
+            } catch (final Exception ex) {
                 // CHECKSTYLE:ON
-                log.error("Failed to start service.");
+                log.error("Failed to start service.", ex);
             }
         });
     }
@@ -237,10 +322,18 @@ public final class PluginLoader extends ClassLoader implements Closeable {
             try {
                 service.cleanup();
                 // CHECKSTYLE:OFF
-            } catch (Exception e) {
+            } catch (final Exception ex) {
                 // CHECKSTYLE:ON
-                log.error("Failed to shutdown service.");
+                log.error("Failed to shutdown service.", ex);
             }
         });
+    }
+    
+    @RequiredArgsConstructor
+    private static class UberJar {
+        
+        private final JarFile jarFile;
+        
+        private final File sourcePath;
     }
 }
