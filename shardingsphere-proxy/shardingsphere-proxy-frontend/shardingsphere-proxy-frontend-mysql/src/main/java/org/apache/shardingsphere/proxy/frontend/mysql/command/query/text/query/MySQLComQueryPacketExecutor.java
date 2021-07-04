@@ -48,7 +48,7 @@ public final class MySQLComQueryPacketExecutor implements QueryCommandExecutor {
     
     private int currentSequenceId;
     
-    public MySQLComQueryPacketExecutor(final MySQLComQueryPacket packet, final BackendConnection backendConnection) {
+    public MySQLComQueryPacketExecutor(final MySQLComQueryPacket packet, final BackendConnection backendConnection) throws SQLException {
         textProtocolBackendHandler = TextProtocolBackendHandlerFactory.newInstance(DatabaseTypeRegistry.getActualDatabaseType("MySQL"), packet.getSql(), backendConnection);
     }
     
@@ -78,5 +78,10 @@ public final class MySQLComQueryPacketExecutor implements QueryCommandExecutor {
     @Override
     public MySQLPacket getQueryRowPacket() throws SQLException {
         return new MySQLTextResultSetRowPacket(++currentSequenceId, textProtocolBackendHandler.getRowData());
+    }
+    
+    @Override
+    public void close() throws SQLException {
+        textProtocolBackendHandler.close();
     }
 }

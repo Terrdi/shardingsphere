@@ -28,7 +28,6 @@ import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.infra.executor.kernel.ExecutorEngine;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.SQLExecutorExceptionHandler;
 import org.apache.shardingsphere.sharding.rule.ShardingRule;
-import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.transaction.ShardingTransactionManagerEngine;
 import org.apache.shardingsphere.transaction.context.TransactionContexts;
 import org.apache.shardingsphere.transaction.core.TransactionType;
@@ -59,7 +58,7 @@ public abstract class AbstractBaseExecutorTest {
     @Before
     public void setUp() throws SQLException {
         MockitoAnnotations.initMocks(this);
-        SQLExecutorExceptionHandler.setExceptionThrown(false);
+        SQLExecutorExceptionHandler.setExceptionThrown(true);
         executorEngine = new ExecutorEngine(Runtime.getRuntime().availableProcessors());
         setConnection();
     }
@@ -68,7 +67,7 @@ public abstract class AbstractBaseExecutorTest {
         MetaDataContexts metaDataContexts = mock(StandardMetaDataContexts.class, RETURNS_DEEP_STUBS);
         when(metaDataContexts.getExecutorEngine()).thenReturn(executorEngine);
         when(metaDataContexts.getProps()).thenReturn(createConfigurationProperties());
-        when(metaDataContexts.getDatabaseType()).thenReturn(DatabaseTypeRegistry.getActualDatabaseType("H2"));
+        when(metaDataContexts.getDefaultMetaData().getResource().getDatabaseType()).thenReturn(DatabaseTypeRegistry.getActualDatabaseType("H2"));
         ShardingRule shardingRule = mockShardingRule();
         when(metaDataContexts.getDefaultMetaData().getRuleMetaData().getRules()).thenReturn(Collections.singletonList(shardingRule));
         TransactionContexts transactionContexts = mock(TransactionContexts.class);
@@ -84,12 +83,6 @@ public abstract class AbstractBaseExecutorTest {
         ShardingRule result = mock(ShardingRule.class);
         when(result.findTableRuleByActualTable("table_x")).thenReturn(Optional.empty());
         when(result.isNeedAccumulate(any())).thenReturn(true);
-        return result;
-    }
-    
-    protected final SQLStatementContext<?> createSQLStatementContext() {
-        SQLStatementContext<?> result = mock(SQLStatementContext.class, RETURNS_DEEP_STUBS);
-        when(result.getTablesContext().getTableNames()).thenReturn(Collections.singleton("table_x"));
         return result;
     }
     

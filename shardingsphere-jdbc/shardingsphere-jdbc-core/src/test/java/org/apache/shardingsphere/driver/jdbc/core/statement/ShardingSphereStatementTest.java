@@ -17,7 +17,7 @@
 
 package org.apache.shardingsphere.driver.jdbc.core.statement;
 
-import org.apache.shardingsphere.driver.common.base.AbstractShardingSphereDataSourceForShardingTest;
+import org.apache.shardingsphere.driver.jdbc.base.AbstractShardingSphereDataSourceForShardingTest;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -93,6 +93,14 @@ public final class ShardingSphereStatementTest extends AbstractShardingSphereDat
         try (Statement statement = getShardingSphereDataSource().getConnection().createStatement()) {
             statement.executeUpdate(String.format(sql, "OK", 1, 1));
             assertNull(statement.getResultSet());
+        }
+    }
+    
+    @Test(expected = SQLException.class)
+    public void assertColumnNotFoundException() throws SQLException {
+        String sql = "UPDATE t_order_item SET error_column = '%s'";
+        try (Statement statement = getShardingSphereDataSource().getConnection().createStatement()) {
+            statement.executeUpdate(String.format(sql, "OK"));
         }
     }
 }

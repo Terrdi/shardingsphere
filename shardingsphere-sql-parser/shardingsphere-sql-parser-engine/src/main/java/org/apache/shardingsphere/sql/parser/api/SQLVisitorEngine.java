@@ -20,8 +20,10 @@ package org.apache.shardingsphere.sql.parser.api;
 import lombok.RequiredArgsConstructor;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
-import org.apache.shardingsphere.sql.parser.core.visitor.SQLVisitorFactory;
-import org.apache.shardingsphere.sql.parser.core.visitor.SQLVisitorRule;
+import org.apache.shardingsphere.sql.parser.core.database.visitor.SQLVisitorFactory;
+import org.apache.shardingsphere.sql.parser.core.database.visitor.SQLVisitorRule;
+
+import java.util.Properties;
 
 /**
  * SQL visitor engine.
@@ -33,6 +35,8 @@ public final class SQLVisitorEngine {
     
     private final String visitorType;
     
+    private final Properties props;
+    
     /**
      * Visit parse tree.
      *
@@ -41,7 +45,7 @@ public final class SQLVisitorEngine {
      * @return SQL visitor result
      */
     public <T> T visit(final ParseTree parseTree) {
-        ParseTreeVisitor<T> visitor = SQLVisitorFactory.newInstance(databaseType, visitorType, SQLVisitorRule.valueOf(parseTree.getClass()));
+        ParseTreeVisitor<T> visitor = SQLVisitorFactory.newInstance(databaseType, visitorType, SQLVisitorRule.valueOf(parseTree.getClass()), props);
         return parseTree.accept(visitor);
     }
 }

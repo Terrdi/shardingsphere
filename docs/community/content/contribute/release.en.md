@@ -323,7 +323,7 @@ diff -r apache-shardingsphere-${RELEASE.VERSION}-src-release shardingsphere-${RE
 *   Correct year in `NOTICE` file
 *   There is only text files but no binary files
 *   All source files have ASF headers
-*   Codes can be compiled and pass the unit tests (./mvnw install)
+*   Codes can be compiled and pass the unit tests (./mvnw -T 1C install)
 *   Check if there is any extra files or folders, empty folders for example
 
 **Check binary packages**
@@ -336,7 +336,7 @@ to check the following items:
 *   Correct year in `NOTICE` file
 *   All text files have ASF headers
 *   Check the third party dependency license:
-    *   The software have a compatible license
+    *   The software has a compatible license
     *   All software licenses mentioned in `LICENSE`
     *   All the third party dependency licenses are under `licenses` folder
     *   If it depends on Apache license and has a `NOTICE` file, that `NOTICE` file need to be added to `NOTICE` file of the release
@@ -499,6 +499,7 @@ docker tag e9ea51023687 apache/sharding-proxy:${RELEASE.VERSION}
 5.4 Publish Docker Image
 
 ```shell
+docker login
 docker push apache/sharding-proxy:latest
 docker push apache/sharding-proxy:${RELEASE_VERSION}
 ```
@@ -542,11 +543,11 @@ Hi all,
 
 Apache ShardingSphere Team is glad to announce the new release of Apache ShardingSphere ${RELEASE.VERSION}.
 
-ShardingSphere is an open-source ecosystem consisted of a set of distributed database middleware solutions, including 2 independent products, ShardingSphere-JDBC & ShardingSphere-Proxy. 
-They both provide functions of data sharding, distributed transaction and database governance, applicable in a variety of situations such as Java isomorphism, heterogeneous language. 
-Aiming at reasonably making full use of the computation and storage capacity of the database in a distributed system, ShardingSphere defines itself as a middleware, rather than a totally new type of database. 
-As the cornerstone of many enterprises, relational database still takes a huge market share. 
-Therefore, at the current stage, we prefer to focus on its increment instead of a total overturn.
+ShardingSphere is an open-source ecosystem consisted of a set of distributed database solutions, including 2 independent products, ShardingSphere-JDBC & ShardingSphere-Proxy.
+They both provide functions of data scale out, distributed transaction and distributed governance, applicable in a variety of situations such as Java isomorphism and heterogeneous language.
+Apache ShardingSphere aiming at reasonably making full use of the computation and storage capacity of existed database in distributed system, rather than a totally new database.
+As the cornerstone of enterprises, relational database still takes a huge market share.
+Therefore, we prefer to focus on its increment instead of a total overturn.
 
 Download Links: https://shardingsphere.apache.org/document/current/en/downloads/
 

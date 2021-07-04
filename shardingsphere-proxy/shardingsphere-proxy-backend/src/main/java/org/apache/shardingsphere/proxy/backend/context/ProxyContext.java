@@ -21,16 +21,16 @@ import com.google.common.base.Strings;
 import lombok.Getter;
 import org.apache.shardingsphere.infra.context.metadata.MetaDataContexts;
 import org.apache.shardingsphere.infra.context.metadata.impl.StandardMetaDataContexts;
+import org.apache.shardingsphere.infra.lock.ShardingSphereLock;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
+import org.apache.shardingsphere.infra.state.StateContext;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.datasource.JDBCBackendDataSource;
 import org.apache.shardingsphere.proxy.backend.exception.NoDatabaseSelectedException;
 import org.apache.shardingsphere.transaction.context.TransactionContexts;
 import org.apache.shardingsphere.transaction.context.impl.StandardTransactionContexts;
 
-import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -80,7 +80,7 @@ public final class ProxyContext {
      * @return schema exists or not
      */
     public boolean schemaExists(final String schemaName) {
-        return metaDataContexts.getMetaDataMap().containsKey(schemaName);
+        return metaDataContexts.getAllSchemaNames().contains(schemaName);
     }
     
     /**
@@ -90,10 +90,10 @@ public final class ProxyContext {
      * @return ShardingSphere meta data
      */
     public ShardingSphereMetaData getMetaData(final String schemaName) {
-        if (Strings.isNullOrEmpty(schemaName) || !metaDataContexts.getMetaDataMap().containsKey(schemaName)) {
+        if (Strings.isNullOrEmpty(schemaName) || !metaDataContexts.getAllSchemaNames().contains(schemaName)) {
             throw new NoDatabaseSelectedException();
         }
-        return metaDataContexts.getMetaDataMap().get(schemaName);
+        return metaDataContexts.getMetaData(schemaName);
     }
     
     /**
@@ -102,20 +102,24 @@ public final class ProxyContext {
      * @return all schema names
      */
     public List<String> getAllSchemaNames() {
-        return new ArrayList<>(metaDataContexts.getMetaDataMap().keySet());
+        return new ArrayList<>(metaDataContexts.getAllSchemaNames());
     }
     
     /**
-     * Get data source sample.
+     * Get lock.
      * 
-     * @return data source sample
+     * @return lock
      */
-    public Optional<DataSource> getDataSourceSample() {
-        List<String> schemaNames = getAllSchemaNames();
-        if (schemaNames.isEmpty()) {
-            return Optional.empty();
-        }
-        Map<String, DataSource> dataSources = getMetaData(schemaNames.get(0)).getResource().getDataSources();
-        return dataSources.values().stream().findFirst();
+    public Optional<ShardingSphereLock> getLock() {
+        return metaDataContexts.getLock();
+    }
+    
+    /**
+     * Get state context.
+     * 
+     * @return state context
+     */
+    public StateContext getStateContext() {
+        return metaDataContexts.getStateContext();
     }
 }

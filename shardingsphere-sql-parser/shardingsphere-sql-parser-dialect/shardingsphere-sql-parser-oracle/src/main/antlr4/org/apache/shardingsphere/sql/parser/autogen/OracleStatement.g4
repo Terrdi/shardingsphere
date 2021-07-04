@@ -43,6 +43,15 @@ execute
     | createRole
     | dropRole
     | alterRole
+    | setRole
     | call
+    | merge
+    | alterSynonym
+    | alterSession
+    | alterDatabase
+    | alterSystem
+    | setConstraints
+    | analyze
+    | associateStatistics
     ) SEMI_?
     ;

@@ -18,7 +18,7 @@
 package org.apache.shardingsphere.driver.jdbc.core.statement;
 
 import com.google.common.collect.Lists;
-import org.apache.shardingsphere.driver.common.base.AbstractShardingSphereDataSourceForShardingTest;
+import org.apache.shardingsphere.driver.jdbc.base.AbstractShardingSphereDataSourceForShardingTest;
 import org.apache.shardingsphere.driver.fixture.ResetIncrementKeyGenerateAlgorithm;
 import org.junit.Test;
 
@@ -36,9 +36,9 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 public final class ShardingSpherePreparedStatementTest extends AbstractShardingSphereDataSourceForShardingTest {
-
+    
     private static final String INSERT_MULTI_VALUES_WITH_GENERATE_SHARDING_KEY_SQL = "INSERT INTO t_user (name) VALUES (?),(?),(?),(?)";
-
+    
     private static final String SELECT_FOR_INSERT_MULTI_VALUES_WITH_GENERATE_SHARDING_KEY_SQL = "SELECT name FROM t_user WHERE id=%dL";
     
     private static final String INSERT_WITH_GENERATE_KEY_SQL = "INSERT INTO t_order_item (item_id, order_id, user_id, status) VALUES (?, ?, ?, ?)";
@@ -62,6 +62,8 @@ public final class ShardingSpherePreparedStatementTest extends AbstractShardingS
     private static final String UPDATE_AUTO_SQL = "UPDATE t_order_auto SET status = ? WHERE order_id = ?";
     
     private static final String UPDATE_BATCH_SQL = "UPDATE t_order SET status=? WHERE status=?";
+    
+    private static final String UPDATE_WITH_ERROR_COLUMN = "UPDATE t_order SET error_column=?";
     
     @Test
     public void assertAddBatch() throws SQLException {
@@ -529,6 +531,14 @@ public final class ShardingSpherePreparedStatementTest extends AbstractShardingS
     public void assertGetParameterMetaData() throws SQLException {
         try (PreparedStatement preparedStatement = getShardingSphereDataSource().getConnection().prepareStatement(SELECT_SQL_WITH_PARAMETER_MARKER)) {
             assertThat(preparedStatement.getParameterMetaData().getParameterCount(), is(2));
+        }
+    }
+    
+    @Test(expected = SQLException.class)
+    public void assertColumnNotFoundException() throws SQLException {
+        try (PreparedStatement preparedStatement = getShardingSphereDataSource().getConnection().prepareStatement(UPDATE_WITH_ERROR_COLUMN)) {
+            preparedStatement.setString(1, "OK");
+            preparedStatement.executeUpdate();
         }
     }
 }

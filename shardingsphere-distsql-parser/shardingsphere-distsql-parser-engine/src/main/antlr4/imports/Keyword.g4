@@ -22,15 +22,55 @@ import Alphabet;
 WS
     : [ \t\r\n] + ->skip
     ;
-    
-CREATE
-    : C R E A T E
+
+ADD
+    : A D D
     ;
 
-DATASOURCES
-    : D A T A S O U R C E S
+DROP
+    : D R O P
     ;
-    
-SHARDINGRULE
-    : S H A R D I N G R U L E
+
+SHOW
+    : S H O W
+    ;
+
+RESOURCE
+    : R E S O U R C E
+    ;
+
+RESOURCES
+    : R E S O U R C E S
+    ;
+
+FROM
+    : F R O M
+    ;
+
+HOST
+    : H O S T
+    ;
+
+PORT
+    : P O R T
+    ;
+
+DB
+    : D B
+    ;
+
+USER
+    : U S E R
+    ;
+
+PASSWORD
+    : P A S S W O R D
+    ;
+
+NAME
+    : N A M E
+    ;
+
+PROPERTIES
+    : P R O P E R T I E S
     ;

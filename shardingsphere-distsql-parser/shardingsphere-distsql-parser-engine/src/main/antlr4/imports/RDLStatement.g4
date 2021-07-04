@@ -19,55 +19,19 @@ grammar RDLStatement;
 
 import Keyword, Literals, Symbol;
 
-createDataSources
-    : CREATE DATASOURCES LP dataSource (COMMA dataSource)* RP
+addResource
+    : ADD RESOURCE dataSource (COMMA dataSource)*
     ;
 
-createShardingRule
-    : CREATE SHARDINGRULE LP tableRule (COMMA tableRule)* RP
-    ;
-
-tableRule
-    : tableName EQ tableRuleDefinition
+dropResource
+    : DROP RESOURCE IDENTIFIER (COMMA IDENTIFIER)*
     ;
 
 dataSource
-    : dataSourceName EQ dataSourceDefinition
-    ;
-       
-dataSourceDefinition
-    : hostName COLON port COLON dbName (COLON user (COLON password)?)?
-    ;
-
-tableRuleDefinition
-    : strategyType LP strategyDefinition RP
-    ;
-
-strategyType
-    : IDENTIFIER
-    ;
-
-strategyDefinition
-    : columName COMMA strategyProps
-    ;
-
-strategyProps
-    : strategyProp (COMMA strategyProp)*
-    ;
-    
-strategyProp
-    : IDENTIFIER | NUMBER | INT
+    : dataSourceName LP HOST EQ hostName COMMA PORT EQ port COMMA DB EQ dbName COMMA USER EQ user (COMMA PASSWORD EQ password)? (COMMA PROPERTIES LP connectionProperties? RP)? RP
     ;
 
 dataSourceName
-    : IDENTIFIER
-    ;
-
-tableName
-    : IDENTIFIER
-    ;
-
-columName
     : IDENTIFIER
     ;
 
@@ -78,10 +42,11 @@ hostName
 ip
     : NUMBER+
     ;
+
 port
     : INT
     ;
-    
+
 dbName
     : IDENTIFIER
     ;
@@ -91,5 +56,13 @@ user
     ;
 
 password
-    : IDENTIFIER | NUMBER | STRING
+    : IDENTIFIER | INT | STRING
+    ;
+
+connectionProperties
+    : connectionProperty (COMMA connectionProperty)*
+    ;
+
+connectionProperty
+    : key=IDENTIFIER EQ value=IDENTIFIER
     ;
